@@ -1,0 +1,49 @@
+#
+# Patch for MediaWiki to enable the magic identifiers in Wiki.
+#
+
+--- mediawiki-1.9.2-orig/includes/Parser.php
++++ mediawiki-1.9.2/includes/Parser.php
+@@ -1050,7 +1050,10 @@ class Parser
+                                      (?: 97[89] [\ \-]? )?   # optional 13-digit ISBN prefix
+                                      (?: [0-9]  [\ \-]? ){9} # 9 digits with opt. delimiters
+                                      [0-9Xx]                 # check digit
+-                                   \b)
++                                   \b) |
++			    BugID:\s+([0-9]+) |		# BugID magic identifier as m[3]
++			    VCS:\s+([0-9A-Za-z_/\-.]*\b) |   # VCS magic identifier as m[4]
++			    Wiki:\s+([A-Za-z_\-:]+)	# Wiki magic identifier as m[5]
+ 			)!x', array( &$this, 'magicLinkCallback' ), $text );
+ 		wfProfileOut( __METHOD__ );
+ 		return $text;
+@@ -1080,6 +1083,18 @@ class Parser
+ 				$keyword = 'PMID';
+ 				$urlmsg = 'pubmedurl';
+ 				$id = $m[1];
++			} elseif ( substr( $m[0], 0, 6 ) == 'BugID:' ) {
++				$keyword = 'BugID:';
++				$urlmsg = 'bugurl';
++				$id = $m[3];
++			} elseif ( substr( $m[0], 0, 4 ) == 'VCS:' ) {
++				$keyword = 'VCS:';
++				$urlmsg = 'vcsurl';
++				$id = $m[4];
++			} elseif ( substr( $m[0], 0, 5 ) == 'Wiki:' ) {
++				$keyword = 'Wiki:';
++				$urlmsg = 'wikiurl';
++				$id = $m[5];
+ 			} else {
+ 				throw new MWException( __METHOD__.': unrecognised match type "' .
+ 					substr($m[0], 0, 20 ) . '"' );
+--- mediawiki-1.9.2-orig/languages/messages/MessagesEn.php
++++ mediawiki-1.9.2/languages/messages/MessagesEn.php
+@@ -1543,6 +1543,9 @@ further information about books you are 
+ 'groups' => 'User groups',
+ 
+ 'isbn'	=> 'ISBN',
++'bugurl' =>  '/bugzilla/show_bug.cgi?id=$1',
++'vcsurl' =>  '/cgi-bin/cvsweb.cgi/$1/',
++'wikiurl' => '/wiki/index.php/$1',
+ 'rfcurl' =>  'http://www.ietf.org/rfc/rfc$1.txt',
+ 'pubmedurl' =>  'http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?cmd=Retrieve&db=pubmed&dopt=Abstract&list_uids=$1',
+ 'alphaindexline' => "$1 to $2",
