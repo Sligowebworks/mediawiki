@@ -486,7 +486,7 @@ class SkinTemplate extends Skin {
 	 * @private
 	 */
 	function buildPersonalUrls() {
-		global $wgTitle, $wgShowIPinHeader;
+		global $wgTitle, $wgShowIPinHeader, $wgDisableAnonTalk;
 
 		$fname = 'SkinTemplate::buildPersonalUrls';
 		$pageurl = $wgTitle->getLocalURL();
@@ -544,6 +544,7 @@ class SkinTemplate extends Skin {
 					'class' => $this->userpageUrlDetails['exists']?false:'new',
 					'active' => ( $pageurl == $href )
 				);
+			if( !$wgDisableAnonTalk ) {
 				$usertalkUrlDetails = $this->makeTalkUrlDetails($this->userpage);
 				$href = &$usertalkUrlDetails['href'];
 				$personal_urls['anontalk'] = array(
@@ -552,7 +553,8 @@ class SkinTemplate extends Skin {
 					'class' => $usertalkUrlDetails['exists']?false:'new',
 					'active' => ( $pageurl == $href )
 				);
-				$personal_urls['anonlogin'] = array(
+			};				
+			$personal_urls['anonlogin'] = array(
 					'text' => wfMsg('userlogin'),
 					'href' => self::makeSpecialUrl( 'Userlogin', 'returnto=' . $this->thisurl ),
 					'active' => $wgTitle->isSpecial( 'Userlogin' ) 
