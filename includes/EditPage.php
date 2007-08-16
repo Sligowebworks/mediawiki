@@ -1234,10 +1234,12 @@ END
 {$safemodehtml}
 ");
 
-		$wgOut->addHTML(
-"<div class='editButtons'>
-	{$buttons['save']}
-	{$buttons['preview']}
+		$wgOut->addHTML("<div class='editButtons'>");
+        if ( $this->formtype == 'preview') {
+                $wgOut->addHTML( "{$buttons['save']}");
+        }
+        $wgOut->addHTML(
+	"{$buttons['preview']}
 	{$buttons['live']}
 	{$buttons['diff']}
 	<span class='editHelp'>{$cancel} | {$edithelp}</span>
