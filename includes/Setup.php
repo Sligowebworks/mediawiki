@@ -232,4 +232,18 @@ $wgFullyInitialised = true;
 wfProfileOut( $fname.'-extensions' );
 wfProfileOut( $fname );
 
+// from http://www.linux.com/feature/54334
+// You may also want to enhance the wiki pages by adding PHP functionality. To do this, add a function into the includes/Setup.php file:
+function ParsePHPTag($Content)
+{
+ global $wgOut;
+ $wgOut->enableClientCache(false);
+ ob_start();
+ eval($Content);
+ $Result = ob_get_contents();
+ ob_end_clean();
+  return($Result);
+}
+$wgParser->setHook('php','ParsePHPTag');
+// Then, if you want to use PHP in any of your wiki pages, don't use the normal <?PHP ... ?> tags; instead use <PHP> ... </PHP>.
 ?>
