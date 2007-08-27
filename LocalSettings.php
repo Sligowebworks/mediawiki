@@ -33,7 +33,7 @@ if ( $wgCommandLineMode ) {
 	if( !ini_get( 'zlib.output_compression' ) ) @ob_start( 'ob_gzhandler' );
 }
 
-$wgSitename         = "SligoMediaWiki";
+$wgSitename         = "SligoWiki";
 
 ## The URL base path to the directory containing the wiki;
 ## defaults for all runtime URL paths are based off of this.
