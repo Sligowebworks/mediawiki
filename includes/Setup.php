@@ -245,5 +245,5 @@ function ParsePHPTag($Content)
   return($Result);
 }
 $wgParser->setHook('php','ParsePHPTag');
-// Then, if you want to use PHP in any of your wiki pages, don't use the normal <?PHP ... ?> tags; instead use <PHP> ... </PHP>.
+// Then, if you want to use PHP in any of your wiki pages, don't use the normal <?PHP ... ? > tags; instead use <PHP> ... </PHP>.
 ?>
