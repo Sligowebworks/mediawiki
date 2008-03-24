@@ -1,6 +1,6 @@
 <?php
 
-$optionsWithArgs = array( 'maxjobs' );
+$optionsWithArgs = array( 'maxjobs', 'type' );
 $wgUseNormalUser = true;
 require_once( 'commandLine.inc' );
 require_once( "$IP/includes/JobQueue.php" );
@@ -12,15 +12,31 @@ if ( isset( $options['maxjobs'] ) ) {
 	$maxJobs = 10000;
 }
 
-// Trigger errors on inappropriate use of $wgTitle
-$wgTitle = new FakeTitle;
+$type = false;
+if ( isset( $options['type'] ) )
+	$type = $options['type'];
 
-$dbw =& wfGetDB( DB_MASTER );
+$wgTitle = Title::newFromText( 'RunJobs.php' );
+
+$dbw = wfGetDB( DB_MASTER );
 $n = 0;
-while ( $dbw->selectField( 'job', 'count(*)', '', 'runJobs.php' ) ) {
-	while ( false != ($job = Job::pop()) ) {
+$conds = '';
+if ($type !== false)
+	$conds = "job_cmd = " . $dbw->addQuotes($type);
+
+while ( $dbw->selectField( 'job', 'count(*)', $conds, 'runJobs.php' ) ) {
+	$offset=0;
+	for (;;) {
+		$job = ($type == false) ?
+				Job::pop($offset)
+				: Job::pop_type($type);
+
+		if ($job == false)
+			break;
+
 		wfWaitForSlaves( 5 );
 		print $job->id . "  " . $job->toString() . "\n";
+		$offset=$job->id;
 		if ( !$job->run() ) {
 			print "Error: {$job->error}\n";
 		}
@@ -29,4 +45,4 @@ while ( $dbw->selectField( 'job', 'count(*)', '', 'runJobs.php' ) ) {
 		}
 	}
 }
-?>
+

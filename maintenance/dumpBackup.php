@@ -18,8 +18,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
  *
- * @package MediaWiki
- * @subpackage SpecialPage
+ * @addtogroup SpecialPage
  */
 
 $originalDir = getcwd();
@@ -27,8 +26,7 @@ $originalDir = getcwd();
 $optionsWithArgs = array( 'pagelist', 'start', 'end' );
 
 require_once( 'commandLine.inc' );
-require_once( 'SpecialExport.php' );
-require_once( 'maintenance/backup.inc' );
+require_once( 'backup.inc' );
 
 $dumper = new BackupDumper( $argv );
 
@@ -96,4 +94,4 @@ END
 );
 }
 
-?>
+

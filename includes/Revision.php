@@ -1,19 +1,17 @@
 <?php
 /**
- * @package MediaWiki
  * @todo document
  */
 
 /**
- * @package MediaWiki
  * @todo document
  */
 class Revision {
-	const DELETED_TEXT 	= 1;
-	const DELETED_COMMENT 	= 2;
-	const DELETED_USER 	= 4;
+	const DELETED_TEXT = 1;
+	const DELETED_COMMENT = 2;
+	const DELETED_USER = 4;
 	const DELETED_RESTRICTED = 8;
-	
+
 	/**
 	 * Load a page revision from a given revision ID number.
 	 * Returns null if no such revision can be found.
@@ -49,7 +47,7 @@ class Revision {
 			array( "rev_id=$matchId",
 			       'page_id=rev_page',
 			       'page_namespace' => $title->getNamespace(),
-			       'page_title'     => $title->getDbkey() ) );
+			       'page_title'     => $title->getDBkey() ) );
 	}
 
 	/**
@@ -79,7 +77,7 @@ class Revision {
 	 * @access public
 	 * @static
 	 */
-	public static function loadFromPageId( &$db, $pageid, $id = 0 ) {
+	public static function loadFromPageId( $db, $pageid, $id = 0 ) {
 		$conds=array('page_id=rev_page','rev_page'=>intval( $pageid ), 'page_id'=>intval( $pageid ));
 		if( $id ) {
 			$conds['rev_id']=intval($id);
@@ -112,7 +110,7 @@ class Revision {
 			array( "rev_id=$matchId",
 			       'page_id=rev_page',
 			       'page_namespace' => $title->getNamespace(),
-			       'page_title'     => $title->getDbkey() ) );
+			       'page_title'     => $title->getDBkey() ) );
 	}
 
 	/**
@@ -133,7 +131,7 @@ class Revision {
 			array( 'rev_timestamp'  => $db->timestamp( $timestamp ),
 			       'page_id=rev_page',
 			       'page_namespace' => $title->getNamespace(),
-			       'page_title'     => $title->getDbkey() ) );
+			       'page_title'     => $title->getDBkey() ) );
 	}
 
 	/**
@@ -145,10 +143,10 @@ class Revision {
 	 * @static
 	 */
 	private static function newFromConds( $conditions ) {
-		$db =& wfGetDB( DB_SLAVE );
+		$db = wfGetDB( DB_SLAVE );
 		$row = Revision::loadFromConds( $db, $conditions );
 		if( is_null( $row ) ) {
-			$dbw =& wfGetDB( DB_MASTER );
+			$dbw = wfGetDB( DB_MASTER );
 			$row = Revision::loadFromConds( $dbw, $conditions );
 		}
 		return $row;
@@ -164,7 +162,7 @@ class Revision {
 	 * @access private
 	 * @static
 	 */
-	private static function loadFromConds( &$db, $conditions ) {
+	private static function loadFromConds( $db, $conditions ) {
 		$res = Revision::fetchFromConds( $db, $conditions );
 		if( $res ) {
 			$row = $res->fetchObject();
@@ -192,7 +190,7 @@ class Revision {
 		return Revision::fetchFromConds(
 			wfGetDB( DB_SLAVE ),
 			array( 'page_namespace' => $title->getNamespace(),
-			       'page_title'     => $title->getDbkey(),
+			       'page_title'     => $title->getDBkey(),
 			       'page_id=rev_page' ) );
 	}
 
@@ -211,7 +209,7 @@ class Revision {
 			wfGetDB( DB_SLAVE ),
 			array( 'rev_id=page_latest',
 			       'page_namespace' => $title->getNamespace(),
-			       'page_title'     => $title->getDbkey(),
+			       'page_title'     => $title->getDBkey(),
 			       'page_id=rev_page' ) );
 	}
 
@@ -226,7 +224,7 @@ class Revision {
 	 * @access private
 	 * @static
 	 */
-	private static function fetchFromConds( &$db, $conditions ) {
+	private static function fetchFromConds( $db, $conditions ) {
 		$res = $db->select(
 			array( 'page', 'revision' ),
 			array( 'page_namespace',
@@ -240,12 +238,32 @@ class Revision {
 			       'rev_user',
 			       'rev_minor_edit',
 			       'rev_timestamp',
-			       'rev_deleted' ),
+			       'rev_deleted',
+			       'rev_len' ),
 			$conditions,
 			'Revision::fetchRow',
 			array( 'LIMIT' => 1 ) );
 		$ret = $db->resultObject( $res );
 		return $ret;
+	}
+
+	/**
+	 * Return the list of revision fields that should be selected to create 
+	 * a new revision.
+	 */
+	static function selectFields() {
+		return array( 
+			'rev_id',
+			'rev_page',
+			'rev_text_id',
+			'rev_timestamp',
+			'rev_comment',
+			'rev_minor_edit',
+			'rev_user',
+			'rev_user_text,'.
+			'rev_deleted',
+			'rev_len'
+		);
 	}
 
 	/**
@@ -263,6 +281,11 @@ class Revision {
 			$this->mMinorEdit = intval( $row->rev_minor_edit );
 			$this->mTimestamp =         $row->rev_timestamp;
 			$this->mDeleted   = intval( $row->rev_deleted );
+			
+			if( !isset( $row->rev_len ) || is_null( $row->rev_len ) )
+				$this->mSize = null;
+			else
+				$this->mSize = intval( $row->rev_len ); 
 
 			if( isset( $row->page_latest ) ) {
 				$this->mCurrent   = ( $row->rev_id == $row->page_latest );
@@ -293,7 +316,8 @@ class Revision {
 			$this->mMinorEdit = isset( $row['minor_edit'] ) ? intval( $row['minor_edit'] ) : 0;
 			$this->mTimestamp = isset( $row['timestamp']  ) ? strval( $row['timestamp']  ) : wfTimestamp( TS_MW );
 			$this->mDeleted   = isset( $row['deleted']    ) ? intval( $row['deleted']    ) : 0;
-
+			$this->mSize      = isset( $row['len']        ) ? intval( $row['len']        ) : null;
+			
 			// Enforce spacing trimming on supplied text
 			$this->mComment   = isset( $row['comment']    ) ?  trim( strval( $row['comment'] ) ) : null;
 			$this->mText      = isset( $row['text']       ) ? rtrim( strval( $row['text']    ) ) : null;
@@ -301,6 +325,9 @@ class Revision {
 
 			$this->mTitle     = null; # Load on demand if needed
 			$this->mCurrent   = false;
+			# If we still have no len_size, see it we have the text to figure it out
+			if ( !$this->mSize )
+				$this->mSize      = is_null($this->mText) ? null : strlen($this->mText);
 		} else {
 			throw new MWException( 'Revision constructor passed invalid row format.' );
 		}
@@ -325,6 +352,13 @@ class Revision {
 	}
 
 	/**
+	 * Returns the length of the text in this revision, or null if unknown.
+	 */
+	function getSize() {
+		return $this->mSize;
+	}
+
+	/**
 	 * Returns the title of the page associated with this entry.
 	 * @return Title
 	 */
@@ -332,7 +366,7 @@ class Revision {
 		if( isset( $this->mTitle ) ) {
 			return $this->mTitle;
 		}
-		$dbr =& wfGetDB( DB_SLAVE );
+		$dbr = wfGetDB( DB_SLAVE );
 		$row = $dbr->selectRow(
 			array( 'page', 'revision' ),
 			array( 'page_namespace', 'page_title' ),
@@ -459,6 +493,18 @@ class Revision {
 		}
 		return $this->mText;
 	}
+	
+	/**
+	 * Fetch revision text if it's available to THIS user
+	 * @return string
+	 */
+	function revText() {
+		if( !$this->userCan( self::DELETED_TEXT ) ) {
+			return "";
+		} else {
+			return $this->getRawText();
+		}
+	}
 
 	/**
 	 * @return string
@@ -565,7 +611,7 @@ class Revision {
 				# Old revisions kept around in a legacy encoding?
 				# Upconvert on demand.
 				global $wgInputEncoding, $wgContLang;
-				$text = $wgContLang->iconv( $wgLegacyEncoding, $wgInputEncoding . '//IGNORE', $text );
+				$text = $wgContLang->iconv( $wgLegacyEncoding, $wgInputEncoding, $text );
 			}
 		}
 		wfProfileOut( $fname );
@@ -666,6 +712,7 @@ class Revision {
 				'rev_user_text'  => $this->mUserText,
 				'rev_timestamp'  => $dbw->timestamp( $this->mTimestamp ),
 				'rev_deleted'    => $this->mDeleted,
+				'rev_len'	     => $this->mSize,
 			), $fname
 		);
 
@@ -706,7 +753,7 @@ class Revision {
 		
 		if( !$row ) {
 			// Text data is immutable; check slaves first.
-			$dbr =& wfGetDB( DB_SLAVE );
+			$dbr = wfGetDB( DB_SLAVE );
 			$row = $dbr->selectRow( 'text',
 				array( 'old_text', 'old_flags' ),
 				array( 'old_id' => $this->getTextId() ),
@@ -715,7 +762,7 @@ class Revision {
 
 		if( !$row ) {
 			// Possible slave lag!
-			$dbw =& wfGetDB( DB_MASTER );
+			$dbw = wfGetDB( DB_MASTER );
 			$row = $dbw->selectRow( 'text',
 				array( 'old_text', 'old_flags' ),
 				array( 'old_id' => $this->getTextId() ),
@@ -747,9 +794,8 @@ class Revision {
 	 * @param bool     $minor
 	 * @return Revision
 	 */
-	function newNullRevision( &$dbw, $pageId, $summary, $minor ) {
-		$fname = 'Revision::newNullRevision';
-		wfProfileIn( $fname );
+	public static function newNullRevision( &$dbw, $pageId, $summary, $minor ) {
+		wfProfileIn( __METHOD__ );
 
 		$current = $dbw->selectRow(
 			array( 'page', 'revision' ),
@@ -758,7 +804,7 @@ class Revision {
 				'page_id' => $pageId,
 				'page_latest=rev_id',
 				),
-			$fname );
+			__METHOD__ );
 
 		if( $current ) {
 			$revision = new Revision( array(
@@ -771,7 +817,7 @@ class Revision {
 			$revision = null;
 		}
 
-		wfProfileOut( $fname );
+		wfProfileOut( __METHOD__ );
 		return $revision;
 	}
 	
@@ -802,12 +848,12 @@ class Revision {
 	 * @param integer $id
 	 */
 	static function getTimestampFromID( $id ) {
-		$dbr =& wfGetDB( DB_SLAVE );
+		$dbr = wfGetDB( DB_SLAVE );
 		$timestamp = $dbr->selectField( 'revision', 'rev_timestamp', 
 			array( 'rev_id' => $id ), __METHOD__ );
 		if ( $timestamp === false ) {
 			# Not in slave, try master
-			$dbw =& wfGetDB( DB_MASTER );
+			$dbw = wfGetDB( DB_MASTER );
 			$timestamp = $dbw->selectField( 'revision', 'rev_timestamp', 
 				array( 'rev_id' => $id ), __METHOD__ );
 		}
@@ -841,4 +887,4 @@ define( 'MW_REV_DELETED_USER', Revision::DELETED_USER );
 define( 'MW_REV_DELETED_RESTRICTED', Revision::DELETED_RESTRICTED );
 
 
-?>
+

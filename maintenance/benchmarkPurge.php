@@ -1,8 +1,7 @@
 <?php
 /**
  * Squid purge benchmark script
- * @package MediaWiki
- * @subpackage Maintenance
+ * @addtogroup Maintenance
  */
 
 /** */
@@ -62,4 +61,3 @@ if( !$wgUseSquid ) {
 		print "$trial\n";
 	}
 }
-?>

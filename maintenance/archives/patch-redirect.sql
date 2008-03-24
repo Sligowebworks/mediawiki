@@ -4,7 +4,7 @@
 -- 
 CREATE TABLE /*$wgDBprefix*/redirect (
   -- Key to the page_id of the redirect page
-  rd_from int(8) unsigned NOT NULL default '0',
+  rd_from int unsigned NOT NULL default '0',
 
   -- Key to page_namespace/page_title of the target page.
   -- The target page may or may not exist, and due to renames
@@ -15,7 +15,7 @@ CREATE TABLE /*$wgDBprefix*/redirect (
 
   PRIMARY KEY rd_from (rd_from),
   KEY rd_ns_title (rd_namespace,rd_title,rd_from)
-) TYPE=InnoDB;
+) /*$wgDBTableOptions*/;
 
 -- Import existing redirects
 -- Using ignore because some of the redirect pages contain more than one link

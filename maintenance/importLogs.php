@@ -1,8 +1,7 @@
 <?php
 /**
  * @todo document
- * @package MediaWiki
- * @subpackage Maintenance
+ * @addtogroup Maintenance
  */
 
 /** */
@@ -24,4 +23,4 @@ foreach( LogPage::validTypes() as $type ) {
 	$importer->importText( $text );
 }
 
-?>
+

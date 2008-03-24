@@ -11,7 +11,6 @@ define( 'MW_UPGRADE_CALLBACK', null  ); // for self-documentation only
 
 class FiveUpgrade {
 	function FiveUpgrade() {
-		global $wgDatabase;
 		$this->conversionTables = $this->prepareWindows1252();
 
 		$this->dbw =& $this->newConnection();
@@ -275,7 +274,6 @@ class FiveUpgrade {
 		$name_temp = $name . '_temp';
 		$this->log( "Migrating $name table to $name_temp..." );
 
-		$table      = $this->dbw->tableName( $name );
 		$table_temp = $this->dbw->tableName( $name_temp );
 
 		// Create temporary table; we're going to copy everything in there,
@@ -335,7 +333,7 @@ class FiveUpgrade {
 
 		$this->log( "...converting from cur/old to page/revision/text DB structure." );
 
-		extract( $this->dbw->tableNames( 'cur', 'old', 'page', 'revision', 'text' ) );
+		list ($cur, $old, $page, $revision, $text) = $this->dbw->tableNamesN( 'cur', 'old', 'page', 'revision', 'text' );
 
 		$this->log( "Creating page and revision tables..." );
 		$this->dbw->query("CREATE TABLE $page (
@@ -497,14 +495,15 @@ class FiveUpgrade {
 	function upgradeLinks() {
 		$fname = 'FiveUpgrade::upgradeLinks';
 		$chunksize = 200;
-		extract( $this->dbw->tableNames( 'links', 'brokenlinks', 'pagelinks', 'cur' ) );
+		list ($links, $brokenlinks, $pagelinks, $cur) = $this->dbw->tableNamesN( 'links', 'brokenlinks', 'pagelinks', 'cur' );
 
 		$this->log( 'Checking for interwiki table change in case of bogus items...' );
 		if( $this->dbw->fieldExists( 'interwiki', 'iw_trans' ) ) {
 			$this->log( 'interwiki has iw_trans.' );
 		} else {
+			global $IP;
 			$this->log( 'adding iw_trans...' );
-			dbsource( 'maintenance/archives/patch-interwiki-trans.sql', $this->dbw );
+			dbsource( $IP . '/maintenance/archives/patch-interwiki-trans.sql', $this->dbw );
 			$this->log( 'added iw_trans.' );
 		}
 
@@ -694,10 +693,7 @@ END;
 		return $copy;
 	}
 
-	function imageInfo( $name, $subdirCallback='wfImageDir', $basename = null ) {
-		if( is_null( $basename ) ) $basename = $name;
-		$dir = call_user_func( $subdirCallback, $basename );
-		$filename = $dir . '/' . $name;
+	function imageInfo( $filename ) {
 		$info = array(
 			'width'  => 0,
 			'height' => 0,
@@ -712,20 +708,13 @@ END;
 
 		$info['media'] = $magic->getMediaType( $filename, $mime );
 
-		# Height and width
-		$gis = false;
-		if( $mime == 'image/svg' ) {
-			$gis = wfGetSVGsize( $filename );
-		} elseif( $magic->isPHPImageType( $mime ) ) {
-			$gis = getimagesize( $filename );
-		} else {
-			$this->log( "Surprising mime type: $mime" );
-		}
-		if( $gis ) {
-			$info['width' ] = $gis[0];
-			$info['height'] = $gis[1];
-		}
-		if( isset( $gis['bits'] ) ) {
+		$image = UnregisteredLocalFile::newFromPath( $filename, $mime );
+
+		$info['width'] = $image->getWidth();
+		$info['height'] = $image->getHeight();
+
+		$gis = $image->getImageSize();
+		if ( isset( $gis['bits'] ) ) {
 			$info['bits'] = $gis['bits'];
 		}
 
@@ -740,7 +729,7 @@ END;
 	function clearTable( $table ) {
 		print "Clearing $table...\n";
 		$tableName = $this->db->tableName( $table );
-		$this->db->query( 'TRUNCATE $tableName' );
+		$this->db->query( "TRUNCATE $tableName" );
 	}
 
 	/**
@@ -765,7 +754,7 @@ END;
 
 		$this->log( "$oldpath -> $newpath" );
 		if( rename( $oldpath, $newpath ) ) {
-			$relpath = $this->relativize( $newpath, dirname( $oldpath ) );
+			$relpath = wfRelativePath( $newpath, dirname( $oldpath ) );
 			if( !symlink( $relpath, $oldpath ) ) {
 				$this->log( "... symlink failed!" );
 			}
@@ -774,38 +763,6 @@ END;
 			$this->log( "... rename failed!" );
 			return false;
 		}
-	}
-
-	/**
-	 * Generate a relative path name to the given file.
-	 * Assumes Unix-style paths, separators, and semantics.
-	 *
-	 * @param string $path Absolute destination path including target filename
-	 * @param string $from Absolute source path, directory only
-	 * @return string
-	 * @access private
-	 * @static
-	 */
-	function relativize( $path, $from ) {
-		$pieces  = explode( '/', dirname( $path ) );
-		$against = explode( '/', $from );
-
-		// Trim off common prefix
-		while( count( $pieces ) && count( $against )
-			&& $pieces[0] == $against[0] ) {
-			array_shift( $pieces );
-			array_shift( $against );
-		}
-
-		// relative dots to bump us to the parent
-		while( count( $against ) ) {
-			array_unshift( $pieces, '..' );
-			array_shift( $against );
-		}
-
-		array_push( $pieces, wfBaseName( $path ) );
-
-		return implode( '/', $pieces );
 	}
 
 	function upgradeOldImage() {
@@ -868,7 +825,7 @@ END;
 		$fname = 'FiveUpgrade::upgradeWatchlist';
 		$chunksize = 100;
 
-		extract( $this->dbw->tableNames( 'watchlist', 'watchlist_temp' ) );
+		list ($watchlist, $watchlist_temp) = $this->dbw->tableNamesN( 'watchlist', 'watchlist_temp' );
 
 		$this->log( 'Migrating watchlist table to watchlist_temp...' );
 		$this->dbw->query(
@@ -907,7 +864,6 @@ END;
 
 		$add = array();
 		while( $row = $this->dbr->fetchObject( $result ) ) {
-			$now = $this->dbw->timestamp();
 			$add[] = array(
 				'wl_user'      =>                        $row->wl_user,
 				'wl_namespace' => Namespace::getSubject( $row->wl_namespace ),
@@ -930,7 +886,7 @@ END;
 	}
 
 	function upgradeLogging() {
-		$tabledef = <<<END
+		$tabledef = <<<ENDS
 CREATE TABLE $1 (
   -- Symbolic keys for the general log type and the action type
   -- within the log. The output format will be controlled by the
@@ -960,7 +916,7 @@ CREATE TABLE $1 (
   KEY page_time (log_namespace, log_title, log_timestamp)
 
 ) TYPE=InnoDB
-END;
+ENDS;
 		$fields = array(
 			'log_type'      => MW_UPGRADE_COPY,
 			'log_action'    => MW_UPGRADE_COPY,
@@ -974,7 +930,7 @@ END;
 	}
 
 	function upgradeArchive() {
-		$tabledef = <<<END
+		$tabledef = <<<ENDS
 CREATE TABLE $1 (
   ar_namespace int NOT NULL default '0',
   ar_title varchar(255) binary NOT NULL default '',
@@ -994,7 +950,7 @@ CREATE TABLE $1 (
   KEY name_title_timestamp (ar_namespace,ar_title,ar_timestamp)
 
 ) TYPE=InnoDB
-END;
+ENDS;
 		$fields = array(
 			'ar_namespace'  => MW_UPGRADE_COPY,
 			'ar_title'      => MW_UPGRADE_ENCODE,
@@ -1013,7 +969,7 @@ END;
 	function upgradeImagelinks() {
 		global $wgUseLatin1;
 		if( $wgUseLatin1 ) {
-			$tabledef = <<<END
+			$tabledef = <<<ENDS
 CREATE TABLE $1 (
   -- Key to page_id of the page containing the image / media link.
   il_from int(8) unsigned NOT NULL default '0',
@@ -1027,7 +983,7 @@ CREATE TABLE $1 (
   KEY (il_to)
 
 ) TYPE=InnoDB
-END;
+ENDS;
 			$fields = array(
 				'il_from' => MW_UPGRADE_COPY,
 				'il_to'   => MW_UPGRADE_ENCODE );
@@ -1038,7 +994,7 @@ END;
 	function upgradeCategorylinks() {
 		global $wgUseLatin1;
 		if( $wgUseLatin1 ) {
-			$tabledef = <<<END
+			$tabledef = <<<ENDS
 CREATE TABLE $1 (
   cl_from int(8) unsigned NOT NULL default '0',
   cl_to varchar(255) binary NOT NULL default '',
@@ -1049,7 +1005,7 @@ CREATE TABLE $1 (
   KEY cl_sortkey(cl_to,cl_sortkey),
   KEY cl_timestamp(cl_to,cl_timestamp)
 ) TYPE=InnoDB
-END;
+ENDS;
 			$fields = array(
 				'cl_from'      => MW_UPGRADE_COPY,
 				'cl_to'        => MW_UPGRADE_ENCODE,
@@ -1062,7 +1018,7 @@ END;
 	function upgradeIpblocks() {
 		global $wgUseLatin1;
 		if( $wgUseLatin1 ) {
-			$tabledef = <<<END
+			$tabledef = <<<ENDS
 CREATE TABLE $1 (
   ipb_id int(8) NOT NULL auto_increment,
   ipb_address varchar(40) binary NOT NULL default '',
@@ -1078,7 +1034,7 @@ CREATE TABLE $1 (
   INDEX ipb_user (ipb_user)
 
 ) TYPE=InnoDB
-END;
+ENDS;
 			$fields = array(
 				'ipb_id'        => MW_UPGRADE_COPY,
 				'ipb_address'   => MW_UPGRADE_COPY,
@@ -1094,7 +1050,7 @@ END;
 
 	function upgradeRecentchanges() {
 		// There's a format change in the namespace field
-		$tabledef = <<<END
+		$tabledef = <<<ENDS
 CREATE TABLE $1 (
   rc_id int(8) NOT NULL auto_increment,
   rc_timestamp varchar(14) binary NOT NULL default '',
@@ -1132,7 +1088,7 @@ CREATE TABLE $1 (
   INDEX rc_ip (rc_ip)
 
 ) TYPE=InnoDB
-END;
+ENDS;
 		$fields = array(
 			'rc_id'             => MW_UPGRADE_COPY,
 			'rc_timestamp'      => MW_UPGRADE_COPY,
@@ -1158,7 +1114,7 @@ END;
 
 	function upgradeQuerycache() {
 		// There's a format change in the namespace field
-		$tabledef = <<<END
+		$tabledef = <<<ENDS
 CREATE TABLE $1 (
   -- A key name, generally the base name of of the special page.
   qc_type char(32) NOT NULL,
@@ -1173,7 +1129,7 @@ CREATE TABLE $1 (
   KEY (qc_type,qc_value)
 
 ) TYPE=InnoDB
-END;
+ENDS;
 		$fields = array(
 			'qc_type'      => MW_UPGRADE_COPY,
 			'qc_value'     => MW_UPGRADE_COPY,

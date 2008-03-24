@@ -10,12 +10,9 @@ h1, h2, h3, h4, h5, h6 { font-weight: bolder }
 
 /* Now the custom parts */
 
-/* Make edit sections (which are inside h# tags) normal-sized
-   and otherwise format */
+/* Make edit sections (which are inside h# tags) normal-sized */
 .editsection {
 	font-weight: normal;
-	float: right;
-	margin-left: 5px;
 }
 h1 .editsection { font-size: 50% }
 h2 .editsection { font-size: 66.7% }
@@ -202,17 +199,9 @@ textarea {
   width: 100%;
 }
 
-#p-personal li, #p-personal ul,
-#p-tb li, #p-tb ul,
-#p-navigation li, #p-navigation ul,
-#p-cactions li, #p-cactions ul,
-#p-newlinks li, #p-newlinks ul {
-  padding-left: 0em;
-  margin-left: 0.5em;
-}
-
-#p-cactions li, #p-cactions ul {
-  margin-left: 0.7em;
+.pBody li, .pBody ul {
+	padding-left: 0em;
+	margin-left: 0.5em;
 }
 
 pre {
@@ -268,7 +257,7 @@ td.diff-deletedline {
     background-color: #f8ffaa;
 }
 
-span.diffchange { background-color: #FFCDF3; }
+.diffchange { background-color: #FFCDF3; text-decoration: none; }
 .autocomment { color:  grey; }
 #pagehistory span.user {
     margin-left: 1.4em;
@@ -345,6 +334,9 @@ div.tleft {
     clear: left;
     margin-right:0.5em;
     border-width: 0.5em 1.4em 0.8em 0;
+}
+img.thumbborder {
+	border: 1px solid #dddddd;
 }
 
 a.stub { color: #772233; }
@@ -437,6 +429,13 @@ table.collapsed tr.collapsable {
 }
 
 .templatesUsed { margin-top: 1.5em; }
-#toolbar { clear: both; }
 
-.mw-plusminus-null { color: #aaa; }
+/* Recreating-deleted-page/reupload file warning and log entries */
+div#mw-upload-deleted-warn ul li,
+div#mw-recreate-deleted-warn ul li {
+	font-size: 95%;
+}
+div.mw-recreate-deleted-control {
+	float: right;
+	font-size: 90%;
+}

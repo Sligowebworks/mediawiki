@@ -19,19 +19,18 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
  *
- * @package MediaWiki
  */
 
 /**
  * Since PHP4 doesn't have exceptions, here's some error objects
  * loosely modeled on the standard PEAR_Error model...
- * @package MediaWiki
+ * @addtogroup Exception
  */
 class WikiError {
 	/**
 	 * @param string $message
 	 */
-	function WikiError( $message ) {
+	function __construct( $message ) {
 		$this->mMessage = $message;
 	}
 
@@ -66,7 +65,7 @@ class WikiError {
 
 /**
  * Localized error message object
- * @package MediaWiki
+ * @addtogroup Exception
  */
 class WikiErrorMsg extends WikiError {
 	/**
@@ -81,8 +80,8 @@ class WikiErrorMsg extends WikiError {
 }
 
 /**
- * @package MediaWiki
  * @todo document
+ * @addtogroup Exception
  */
 class WikiXmlError extends WikiError {
 	/**
@@ -102,12 +101,12 @@ class WikiXmlError extends WikiError {
 
 	/** @return string */
 	function getMessage() {
-		return sprintf( '%s at line %d, col %d (byte %d%s): %s',
+		// '$1 at line $2, col $3 (byte $4): $5',
+		return wfMsgHtml( 'xml-error-string',
 			$this->mMessage,
 			$this->mLine,
 			$this->mColumn,
-			$this->mByte,
-			$this->mContext,
+			$this->mByte . $this->mContext,
 			xml_error_string( $this->mXmlError ) );
 	}
 
@@ -121,5 +120,3 @@ class WikiXmlError extends WikiError {
 		}
 	}
 }
-
-?>

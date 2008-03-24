@@ -3,17 +3,23 @@
  * Special handling for category description pages
  * Modelled after ImagePage.php
  *
- * @package MediaWiki
  */
 
 if( !defined( 'MEDIAWIKI' ) )
 	die( 1 );
 
 /**
- * @package MediaWiki
  */
 class CategoryPage extends Article {
 	function view() {
+		global $wgRequest, $wgUser;
+
+		$diff = $wgRequest->getVal( 'diff' );
+		$diffOnly = $wgRequest->getBool( 'diffonly', $wgUser->getOption( 'diffonly' ) );
+
+		if ( isset( $diff ) && $diffOnly )
+			return Article::view();
+
 		if(!wfRunHooks('CategoryPageView', array(&$this))) return;
 
 		if ( NS_CATEGORY == $this->mTitle->getNamespace() ) {
@@ -29,6 +35,19 @@ class CategoryPage extends Article {
 		if ( NS_CATEGORY == $this->mTitle->getNamespace() ) {
 			$this->closeShowCategory();
 		}
+	}
+
+	/**
+	 * This page should not be cached if 'from' or 'until' has been used
+	 * @return bool
+	 */
+	function isFileCacheable() {
+		global $wgRequest;
+
+		return ( ! Article::isFileCacheable()
+				|| $wgRequest->getVal( 'from' )
+				|| $wgRequest->getVal( 'until' )
+		) ? false : true;
 	}
 
 	function openShowCategory() {
@@ -84,6 +103,11 @@ class CategoryViewer {
 			$this->getImageSection() .
 			$this->getCategoryBottom();
 
+		// Give a proper message if category is empty
+		if ( $r == '' ) {
+			$r = wfMsgExt( 'category-empty', array( 'parse' ) );
+		}
+
 		wfProfileOut( __METHOD__ );
 		return $r;
 	}
@@ -95,7 +119,7 @@ class CategoryViewer {
 		$this->children_start_char = array();
 		if( $this->showGallery ) {
 			$this->gallery = new ImageGallery();
-			$this->gallery->setParsing();
+			$this->gallery->setHideBadImages();
 		}
 	}
 
@@ -141,7 +165,7 @@ class CategoryViewer {
 	/**
 	 * Add a page in the image namespace
 	 */
-	function addImage( $title, $sortkey, $pageLength ) {
+	function addImage( Title $title, $sortkey, $pageLength, $isRedirect = false ) {
 		if ( $this->showGallery ) {
 			$image = new Image( $title );
 			if( $this->flip ) {
@@ -150,18 +174,18 @@ class CategoryViewer {
 				$this->gallery->add( $image );
 			}
 		} else {
-			$this->addPage( $title, $sortkey, $pageLength );
+			$this->addPage( $title, $sortkey, $pageLength, $isRedirect );
 		}
 	}
 
 	/**
 	 * Add a miscellaneous page
 	 */
-	function addPage( $title, $sortkey, $pageLength ) {
+	function addPage( $title, $sortkey, $pageLength, $isRedirect = false ) {
 		global $wgContLang;
-		$this->articles[] = $this->getSkin()->makeSizeLinkObj( 
-			$pageLength, $title, $wgContLang->convert( $title->getPrefixedText() ) 
-		);
+		$this->articles[] = $isRedirect
+			? '<span class="redirect-in-category">' . $this->getSkin()->makeKnownLinkObj( $title ) . '</span>'
+			: $this->getSkin()->makeSizeLinkObj( $pageLength, $title );
 		$this->articles_start_char[] = $wgContLang->convert( $wgContLang->firstChar( $sortkey ) );
 	}
 
@@ -175,7 +199,7 @@ class CategoryViewer {
 	}
 
 	function doCategoryQuery() {
-		$dbr =& wfGetDB( DB_SLAVE );
+		$dbr = wfGetDB( DB_SLAVE );
 		if( $this->from != '' ) {
 			$pageCondition = 'cl_sortkey >= ' . $dbr->addQuotes( $this->from );
 			$this->flip = false;
@@ -188,14 +212,15 @@ class CategoryViewer {
 		}
 		$res = $dbr->select(
 			array( 'page', 'categorylinks' ),
-			array( 'page_title', 'page_namespace', 'page_len', 'cl_sortkey' ),
+			array( 'page_title', 'page_namespace', 'page_len', 'page_is_redirect', 'cl_sortkey' ),
 			array( $pageCondition,
 			       'cl_from          =  page_id',
-			       'cl_to'           => $this->title->getDBKey()),
+			       'cl_to'           => $this->title->getDBkey()),
 			       #'page_is_redirect' => 0),
 			#+ $pageCondition,
 			__METHOD__,
 			array( 'ORDER BY' => $this->flip ? 'cl_sortkey DESC' : 'cl_sortkey',
+			       'USE INDEX' => 'cl_sortkey', 
 			       'LIMIT'    => $this->limit + 1 ) );
 
 		$count = 0;
@@ -212,33 +237,36 @@ class CategoryViewer {
 
 			if( $title->getNamespace() == NS_CATEGORY ) {
 				$this->addSubcategory( $title, $x->cl_sortkey, $x->page_len );
-			} elseif( $title->getNamespace() == NS_IMAGE ) {
-				$this->addImage( $title, $x->cl_sortkey, $x->page_len );
+			} elseif( $this->showGallery && $title->getNamespace() == NS_IMAGE ) {
+				$this->addImage( $title, $x->cl_sortkey, $x->page_len, $x->page_is_redirect );
 			} else {
-				$this->addPage( $title, $x->cl_sortkey, $x->page_len );
+				$this->addPage( $title, $x->cl_sortkey, $x->page_len, $x->page_is_redirect );
 			}
 		}
 		$dbr->freeResult( $res );
 	}
 
 	function getCategoryTop() {
-		$r = "<br style=\"clear:both;\"/>\n";
+		$r = '';
 		if( $this->until != '' ) {
 			$r .= $this->pagingLinks( $this->title, $this->nextPage, $this->until, $this->limit );
 		} elseif( $this->nextPage != '' || $this->from != '' ) {
 			$r .= $this->pagingLinks( $this->title, $this->from, $this->nextPage, $this->limit );
 		}
-		return $r;
+		return $r == ''
+			? $r
+			: "<br style=\"clear:both;\"/>\n" . $r;
 	}
 
 	function getSubcategorySection() {
 		# Don't show subcategories section if there are none.
 		$r = '';
-		if( count( $this->children ) > 0 ) {
+		$c = count( $this->children );
+		if( $c > 0 ) {
 			# Showing subcategories
 			$r .= "<div id=\"mw-subcategories\">\n";
 			$r .= '<h2>' . wfMsg( 'subcategories' ) . "</h2>\n";
-			$r .= wfMsgExt( 'subcategorycount', array( 'parse' ), count( $this->children) );
+			$r .= wfMsgExt( 'subcategorycount', array( 'parse' ), $c );
 			$r .= $this->formatList( $this->children, $this->children_start_char );
 			$r .= "\n</div>";
 		}
@@ -247,11 +275,16 @@ class CategoryViewer {
 
 	function getPagesSection() {
 		$ti = htmlspecialchars( $this->title->getText() );
-		$r = "<div id=\"mw-pages\">\n";
-		$r .= '<h2>' . wfMsg( 'category_header', $ti ) . "</h2>\n";
-		$r .= wfMsgExt( 'categoryarticlecount', array( 'parse' ), count( $this->articles) );
-		$r .= $this->formatList( $this->articles, $this->articles_start_char );
-		$r .= "\n</div>";
+		# Don't show articles section if there are none.
+		$r = '';
+		$c = count( $this->articles );
+		if( $c > 0 ) {
+			$r = "<div id=\"mw-pages\">\n";
+			$r .= '<h2>' . wfMsg( 'category_header', $ti ) . "</h2>\n";
+			$r .= wfMsgExt( 'categoryarticlecount', array( 'parse' ), $c );
+			$r .= $this->formatList( $this->articles, $this->articles_start_char );
+			$r .= "\n</div>";
+		}
 		return $r;
 	}
 
@@ -339,7 +372,7 @@ class CategoryViewer {
 					}
 					$cont_msg = "";
 					if ( $articles_start_char[$index] == $prev_start_char )
-						$cont_msg = wfMsgHtml('listingcontinuesabbrev');
+						$cont_msg = ' ' . wfMsgHtml( 'listingcontinuesabbrev' );
 					$r .= "<h3>" . htmlspecialchars( $articles_start_char[$index] ) . "$cont_msg</h3>\n<ul>";
 					$prev_start_char = $articles_start_char[$index];
 				}
@@ -390,8 +423,8 @@ class CategoryViewer {
 	 * @private
 	 */
 	function pagingLinks( $title, $first, $last, $limit, $query = array() ) {
-		global $wgUser, $wgLang;
-		$sk =& $this->getSkin();
+		global $wgLang;
+		$sk = $this->getSkin();
 		$limitText = $wgLang->formatNum( $limit );
 
 		$prevLink = htmlspecialchars( wfMsg( 'prevn', $limitText ) );
@@ -410,4 +443,4 @@ class CategoryViewer {
 }
 
 
-?>
+

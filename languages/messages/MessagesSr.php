@@ -1,12 +1,10 @@
 <?php
-/**
-  * Serbian
-  *
-  * @package MediaWiki
-  * @subpackage Language
-  */
+/** Serbian (Српски / Srpski)
+ *
+ * @addtogroup Language
+ *
+ */
 
 $fallback = 'sr-ec';
 $linkTrail = '/^([abvgdđežzijklljmnnjoprstćufhcčdžšабвгдђежзијклљмнњопрстћуфхцчџш]+)(.*)$/usD';
 
-?>

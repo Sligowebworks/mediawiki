@@ -1,7 +1,6 @@
 <?php
 /**
-  * @package MediaWiki
-  * @subpackage Language
+  * @addtogroup Language
   *
   * @author Zhengzhu Feng <zhengzhu@gmail.com>
   * @license http://www.gnu.org/copyleft/gpl.html GNU General Public License
@@ -21,6 +20,9 @@ class LanguageConverter {
 	var $mMarkup;
 	var $mFlags;
 	var $mUcfirst = false;
+
+	const CACHE_VERSION_KEY = 'VERSION 5';
+
 	/**
      * Constructor
 	 *
@@ -36,7 +38,6 @@ class LanguageConverter {
 								$variantfallbacks=array(),
 								$markup=array(),
 								$flags = array()) {
-		global $wgLegalTitleChars;
 		$this->mLangObj = $langobj;
 		$this->mMainLanguageCode = $maincode;
 		$this->mVariants = $variants;
@@ -275,7 +276,7 @@ class LanguageConverter {
 	function parserConvert( $text, &$parser ) {
 		global $wgDisableLangConversion;
 		/* don't do anything if this is the conversion table */
-		if ( $parser->mTitle->getNamespace() == NS_MEDIAWIKI &&
+		if ( $parser->getTitle()->getNamespace() == NS_MEDIAWIKI &&
 				 strpos($parser->mTitle->getText(), "Conversiontable") !== false ) 
 		{
 			return $text;
@@ -408,10 +409,11 @@ class LanguageConverter {
 				$carray = $this->parseManualRule($rules, $flags);
 
 				$disp = '';
-				if(array_key_exists($plang, $carray))
+				if(array_key_exists($plang, $carray)) {
 					$disp = $carray[$plang];
-				else if(array_key_exists($fallback, $carray))
+				} else if(array_key_exists($fallback, $carray)) {
 					$disp = $carray[$fallback];
+				}
 			} else{
 				// if we don't do content convert, still strip the -{}- tags
 				$disp = $rules;
@@ -616,12 +618,11 @@ class LanguageConverter {
 			$this->mTables = $wgMemc->get( $this->mCacheKey );
 			wfProfileOut( __METHOD__.'-cache' );
 		}
-		if ( !$this->mTables || !isset( $this->mTables['VERSION 2'] ) ) {
+		if ( !$this->mTables || !isset( $this->mTables[self::CACHE_VERSION_KEY] ) ) {
 			wfProfileIn( __METHOD__.'-recache' );
 			// not in cache, or we need a fresh reload.
 			// we will first load the default tables
 			// then update them using things in MediaWiki:Zhconversiontable/*
-			global $wgMessageCache;
 			$this->loadDefaultTables();
 			foreach($this->mVariants as $var) {
 				$cached = $this->parseCachedTable($var);
@@ -629,7 +630,7 @@ class LanguageConverter {
 			}
 
 			$this->postLoadTables();
-			$this->mTables['VERSION 2'] = true;
+			$this->mTables[self::CACHE_VERSION_KEY] = true;
 
 			if($this->lockCache()) {
 				$wgMemc->set($this->mCacheKey, $this->mTables, 43200);
@@ -779,7 +780,7 @@ class LanguageConverter {
      * MediaWiki:conversiontable* is updated
      * @private
 	*/
-	function OnArticleSaveComplete($article, $user, $text, $summary, $isminor, $iswatch, $section) {
+	function OnArticleSaveComplete($article, $user, $text, $summary, $isminor, $iswatch, $section, $flags, $revision) {
 		$titleobj = $article->getTitle();
 		if($titleobj->getNamespace() == NS_MEDIAWIKI) {
             /*
@@ -810,5 +811,3 @@ class LanguageConverter {
 
 
 }
-
-?>

@@ -3,8 +3,7 @@
 /**
  * Reassign edits from a user or IP address to another user
  *
- * @package MediaWiki
- * @subpackage Maintenance
+ * @addtogroup Maintenance
  * @author Rob Church <robchur@gmail.com>
  * @licence GNU General Public Licence 2.0 or later
  */
@@ -54,4 +53,3 @@ function ShowUsage() {
 	echo( "  --report : Print out details of what would be changed, but don't update it\n\n" );
 }
 
-?>

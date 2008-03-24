@@ -1,8 +1,7 @@
 <?php
 /**
  * @todo document
- * @package MediaWiki
- * @subpackage Maintenance
+ * @addtogroup Maintenance
  */
 
 /** */
@@ -67,4 +66,4 @@ foreach( $hosts as $host ) {
 	}
 	print "\n";
 }
-?>
+

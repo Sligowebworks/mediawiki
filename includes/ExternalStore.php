@@ -1,19 +1,15 @@
 <?php
 /**
- *
- * @package MediaWiki
- *
  * Constructor class for data kept in external repositories
  *
  * External repositories might be populated by maintenance/async
  * scripts, thus partial moving of data may be possible, as well
  * as possibility to have any storage format (i.e. for archives)
- *
  */
 
 class ExternalStore {
 	/* Fetch data from given URL */
-	function fetchFromURL($url) {
+	static function fetchFromURL($url) {
 		global $wgExternalStores;
 
 		if (!$wgExternalStores)
@@ -33,7 +29,7 @@ class ExternalStore {
 	/**
 	 * Get an external store object of the given type
 	 */
-	function &getStoreObject( $proto ) {
+	static function &getStoreObject( $proto ) {
 		global $wgExternalStores;
 		if (!$wgExternalStores)
 			return false;
@@ -42,10 +38,9 @@ class ExternalStore {
 			return false;
 
 		$class='ExternalStore'.ucfirst($proto);
-		/* Preloaded modules might exist, especially ones serving multiple protocols */
+		/* Any custom modules should be added to $wgAutoLoadClasses for on-demand loading */
 		if (!class_exists($class)) {
-			if (!include_once($class.'.php'))
-				return false;
+			return false;
 		}
 		$store=new $class();
 		return $store;
@@ -57,7 +52,7 @@ class ExternalStore {
 	 * class itself as a parameter.
 	 * Returns the URL of the stored data item, or false on error
 	 */
-	function insert( $url, $data ) {
+	static function insert( $url, $data ) {
 		list( $proto, $params ) = explode( '://', $url, 2 );
 		$store =& ExternalStore::getStoreObject( $proto );
 		if ( $store === false ) {
@@ -67,4 +62,4 @@ class ExternalStore {
 		}
 	}
 }
-?>
+

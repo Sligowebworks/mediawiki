@@ -2,12 +2,12 @@
 /** */
 
 /** */
-function wfStreamFile( $fname ) {
+function wfStreamFile( $fname, $headers = array() ) {
 	$stat = @stat( $fname );
 	if ( !$stat ) {
 		header( 'HTTP/1.0 404 Not Found' );
 		header( 'Cache-Control: no-cache' );
-		header( 'Content-Type: text/html' );
+		header( 'Content-Type: text/html; charset=utf-8' );
 		$encFile = htmlspecialchars( $fname );
 		$encScript = htmlspecialchars( $_SERVER['SCRIPT_NAME'] );
 		echo "<html><body>
@@ -29,6 +29,13 @@ function wfStreamFile( $fname ) {
 		header("Content-type: $type");
 	} else {
 		header('Content-type: application/x-wiki');
+	}
+
+	global $wgContLanguageCode;
+	header( "Content-Disposition: inline;filename*=utf-8'$wgContLanguageCode'" . urlencode( basename( $fname ) ) );
+
+	foreach ( $headers as $header ) {
+		header( $header );
 	}
 
 	if ( !empty( $_SERVER['HTTP_IF_MODIFIED_SINCE'] ) ) {
@@ -69,4 +76,4 @@ function wfGetType( $filename ) {
 	}
 }
 
-?>
+

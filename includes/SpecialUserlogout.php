@@ -1,8 +1,7 @@
 <?php
 /**
  *
- * @package MediaWiki
- * @subpackage SpecialPage
+ * @addtogroup SpecialPage
  */
 
 /**
@@ -11,17 +10,10 @@
 function wfSpecialUserlogout() {
 	global $wgUser, $wgOut;
 
-	if (wfRunHooks('UserLogout', array(&$wgUser))) {
-
-		$wgUser->logout();
-
-		wfRunHooks('UserLogoutComplete', array(&$wgUser));
-
-		$wgOut->setRobotpolicy( 'noindex,nofollow' );
-		$wgOut->addHTML( wfMsgExt( 'logouttext', array( 'parse' ) ) );
-		$wgOut->returnToMain();
-
-	}
+	$wgUser->logout();
+	$wgOut->setRobotpolicy( 'noindex,nofollow' );
+	$wgOut->addHTML( wfMsgExt( 'logouttext', array( 'parse' ) ) );
+	$wgOut->returnToMain();
 }
 
-?>
+

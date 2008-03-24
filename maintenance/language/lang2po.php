@@ -7,6 +7,8 @@
  *   - fix escaping of \
  */
 
+$optionsWithArgs[] = 'lang';
+
 /** This is a command line script */
 require_once(dirname(__FILE__).'/../commandLine.inc');
 require_once(dirname(__FILE__).'/languages.inc');
@@ -69,11 +71,11 @@ msgstr ""
  * @param array &$messages Array containing the various messages.
  * @return string Filename where stuff got saved or false.
  */
-function generatePo($langcode, &$messages) {
+function generatePo($langcode, $messages) {
 	$data = poHeader();
 
 	// Generate .po entries
-	foreach($messages as $identifier => $content) {
+	foreach($messages['all'] as $identifier => $content) {
 		$data .= "msgid \"$identifier\"\n";
 
 		// Escape backslashes
@@ -134,21 +136,20 @@ echo "done.\n";
 
 $langTool = new languages();
 
+if( $options['lang'] === ALL_LANGUAGES ) {
+	$codes = $langTool->getLanguages();
+} else {
+	$codes = array( $options['lang'] );
+}
+
 // Do all languages
-foreach ( $langTool->getMessages() as $langcode) {
-	echo "Loading messages for $langcode:\t";
-	require_once( Language::getClassFileName( $langcode ) );
-	$arr = 'wgAllMessages'.$langcode;
-	if(!@is_array($$arr)) {
-		echo "NONE FOUND\n";
+foreach ( $codes as $langcode) {
+	echo "Loading messages for $langcode:\n";
+	if( ! generatePo($langcode, $langTool->getMessages($langcode) ) ) {
+		echo "ERROR: Failed to write file.\n";
 	} else {
-		echo "ok\n";
-		if( ! generatePo($langcode, $$arr) ) {
-			echo "ERROR: Failed to wrote file.\n";
-		} else {
-			echo "Applying template:";
-			applyPot($langcode);
-		}
+		echo "Applying template:";
+		applyPot($langcode);
 	}
 }
-?>
+

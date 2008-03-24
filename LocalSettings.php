@@ -137,4 +137,5 @@ $wgGroupPermissions['*']['edit'] = false;
 # Disable reading by anonymous users
 $wgGroupPermissions['*']['read'] = false;
 
+require_once $IP . "/extensions/FCKeditor/FCKeditor.php";
 ?>

@@ -1,9 +1,9 @@
 <?php
-/** Yi (ꆇꉙ)
-  *
-  * @package MediaWiki
-  * @subpackage Language
-  */
+/** Sichuan Yi (ꆇꉙ)
+ *
+ * @addtogroup Language
+ *
+ */
 
 $fallback = 'zh-cn';
-?>
+

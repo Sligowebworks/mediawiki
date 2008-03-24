@@ -19,8 +19,7 @@
 
 /**
  * Run text & title search and display the output
- * @package MediaWiki
- * @subpackage SpecialPage
+ * @addtogroup SpecialPage
  */
 
 /**
@@ -43,9 +42,8 @@ function wfSpecialSearch( $par = '' ) {
 }
 
 /**
- * @todo document
- * @package MediaWiki
- * @subpackage SpecialPage
+ * implements Special:Search - Run text & title search and display the output
+ * @addtogroup SpecialPage
  */
 class SpecialSearch {
 
@@ -105,7 +103,11 @@ class SpecialSearch {
 				return;
 			} 
 		}
-		$wgOut->addWikiText( wfMsg( 'noexactmatch', wfEscapeWikiText( $term ) ) );
+		if( $t->quickUserCan( 'create' ) && $t->quickUserCan( 'edit' ) ) {
+			$wgOut->addWikiMsg( 'noexactmatch', wfEscapeWikiText( $term ) );
+		} else {
+			$wgOut->addWikiMsg( 'noexactmatch-nocreate', wfEscapeWikiText( $term ) );
+		}
 
 		return $this->showResults( $term );
 	}
@@ -121,12 +123,13 @@ class SpecialSearch {
 		$this->setupPage( $term );
 
 		global $wgOut;
-		$wgOut->addWikiText( wfMsg( 'searchresulttext' ) );
+		$wgOut->addWikiMsg( 'searchresulttext' );
 
-		#if ( !$this->parseQuery() ) {
 		if( '' === trim( $term ) ) {
+			// Empty query -- straight view of search form
 			$wgOut->setSubtitle( '' );
 			$wgOut->addHTML( $this->powerSearchBox( $term ) );
+			$wgOut->addHTML( $this->powerSearchFocus() );
 			wfProfileOut( $fname );
 			return;
 		}
@@ -157,47 +160,61 @@ class SpecialSearch {
 		$search->setNamespaces( $this->namespaces );
 		$search->showRedirects = $this->searchRedirects;
 		$titleMatches = $search->searchTitle( $term );
+
+		// Sometimes the search engine knows there are too many hits
+		if ($titleMatches instanceof SearchResultTooMany) {
+			$wgOut->addWikiText( '==' . wfMsg( 'toomanymatches' ) . "==\n" );
+			$wgOut->addHTML( $this->powerSearchBox( $term ) );
+			$wgOut->addHTML( $this->powerSearchFocus() );
+			wfProfileOut( $fname );
+			return;
+		}
 		$textMatches = $search->searchText( $term );
 
 		$num = ( $titleMatches ? $titleMatches->numRows() : 0 )
 			+ ( $textMatches ? $textMatches->numRows() : 0);
-		if ( $num >= $this->limit ) {
-			$top = wfShowingResults( $this->offset, $this->limit );
-		} else {
-			$top = wfShowingResultsNum( $this->offset, $this->limit, $num );
+		if ( $num > 0 ) {
+			if ( $num >= $this->limit ) {
+				$top = wfShowingResults( $this->offset, $this->limit );
+			} else {
+				$top = wfShowingResultsNum( $this->offset, $this->limit, $num );
+			}
+			$wgOut->addHTML( "<p>{$top}</p>\n" );
 		}
-		$wgOut->addHTML( "<p>{$top}</p>\n" );
 
 		if( $num || $this->offset ) {
 			$prevnext = wfViewPrevNext( $this->offset, $this->limit,
 				SpecialPage::getTitleFor( 'Search' ),
 				wfArrayToCGI(
 					$this->powerSearchOptions(),
-					array( 'search' => $term ) ) );
+					array( 'search' => $term ) ),
+					($num < $this->limit) );
 			$wgOut->addHTML( "<br />{$prevnext}\n" );
 		}
 
 		if( $titleMatches ) {
 			if( $titleMatches->numRows() ) {
-				$wgOut->addWikiText( '==' . wfMsg( 'titlematches' ) . "==\n" );
+				$wgOut->wrapWikiMsg( "==$1==\n", 'titlematches' );
 				$wgOut->addHTML( $this->showMatches( $titleMatches ) );
 			} else {
-				$wgOut->addWikiText( '==' . wfMsg( 'notitlematches' ) . "==\n" );
+				$wgOut->wrapWikiMsg( "==$1==\n", 'notitlematches' );
 			}
+			$titleMatches->free();
 		}
 
 		if( $textMatches ) {
 			if( $textMatches->numRows() ) {
-				$wgOut->addWikiText( '==' . wfMsg( 'textmatches' ) . "==\n" );
+				$wgOut->wrapWikiMsg( "==$1==\n", 'textmatches' );
 				$wgOut->addHTML( $this->showMatches( $textMatches ) );
 			} elseif( $num == 0 ) {
 				# Don't show the 'no text matches' if we received title matches
-				$wgOut->addWikiText( '==' . wfMsg( 'notextmatches' ) . "==\n" );
+				$wgOut->wrapWikiMsg( "==$1==\n", 'notextmatches' );
 			}
+			$textMatches->free();
 		}
 
 		if ( $num == 0 ) {
-			$wgOut->addWikiText( wfMsg( 'nonefound' ) );
+			$wgOut->addWikiMsg( 'nonefound' );
 		}
 		if( $num || $this->offset ) {
 			$wgOut->addHTML( "<p>{$prevnext}</p>\n" );
@@ -314,12 +331,20 @@ class SpecialSearch {
 			wfProfileOut( $fname );
 			return "<!-- Broken link in search result -->\n";
 		}
-		$sk =& $wgUser->getSkin();
+		$sk = $wgUser->getSkin();
 
 		$contextlines = $wgUser->getOption( 'contextlines',  5 );
 		$contextchars = $wgUser->getOption( 'contextchars', 50 );
 
 		$link = $sk->makeKnownLinkObj( $t );
+
+		//If page content is not readable, just return the title.
+		//This is not quite safe, but better than showing excerpts from non-readable pages
+		//Note that hiding the entry entirely would screw up paging.
+		if (!$t->userCanRead()) {
+			return "<li>{$link}</li>\n";
+		}
+
 		$revision = Revision::newFromTitle( $t );
 		$text = $revision->getText();
 		$size = wfMsgExt( 'nbytes', array( 'parsemag', 'escape'),
@@ -376,8 +401,9 @@ class SpecialSearch {
 			if( '' == $name ) {
 				$name = wfMsg( 'blanknamespace' );
 			}
+			$encName = htmlspecialchars( $name );
 			$namespaces .= " <label><input type='checkbox' value=\"1\" name=\"" .
-			  "ns{$ns}\"{$checked} />{$name}</label>\n";
+			  "ns{$ns}\"{$checked} />{$encName}</label>\n";
 		}
 
 		$checked = $this->searchRedirects
@@ -385,7 +411,7 @@ class SpecialSearch {
 			: '';
 		$redirect = "<input type='checkbox' value='1' name=\"redirs\"{$checked} />\n";
 
-		$searchField = '<input type="text" name="search" value="' .
+		$searchField = '<input type="text" id="powerSearchText" name="search" value="' .
 			htmlspecialchars( $term ) ."\" size=\"16\" />\n";
 
 		$searchButton = '<input type="submit" name="searchx" value="' .
@@ -401,6 +427,12 @@ class SpecialSearch {
 		return "<br /><br />\n<form id=\"powersearch\" method=\"get\" " .
 		  "action=\"$action\">\n{$ret}\n</form>\n";
 	}
+	
+	function powerSearchFocus() {
+		return "<script type='text/javascript'>" .
+			"document.getElementById('powerSearchText').focus();" .
+			"</script>";
+	}
 }
 
-?>
+

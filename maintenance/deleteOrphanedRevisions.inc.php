@@ -3,8 +3,7 @@
 /**
  * Support functions for the deleteOrphanedRevisions maintenance script
  *
- * @package MediaWiki
- * @subpackage Maintenance
+ * @addtogroup Maintenance
  * @author Rob Church <robchur@gmail.com>
  */
 
@@ -30,4 +29,3 @@ function showUsage() {
 	echo( " --report : Prints out a count of affected revisions but doesn't delete them\n\n" );
 }
 
-?>

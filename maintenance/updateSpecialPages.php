@@ -5,19 +5,20 @@ $options = array('only','help');
 
 require_once( 'commandLine.inc' );
 
-require_once( 'SpecialPage.php' );
-require_once( 'QueryPage.php' );
+require_once( "$IP/includes/SpecialPage.php" );
+require_once( "$IP/includes/QueryPage.php" );
 
 if(@$options['help']) {
 	print "usage:updateSpecialPages.php [--help] [--only=page]\n";
 	print "  --help      : this help message\n";
 	print "  --list      : list special pages names\n";
 	print "  --only=page : only update 'page'. Ex: --only=BrokenRedirects\n";
+	print "  --override  : update even pages which have had updates disabled\n";
 	wfDie();
 }
 
 $wgOut->disable();
-$dbw =& wfGetDB( DB_MASTER );
+$dbw = wfGetDB( DB_MASTER );
 
 foreach ( $wgQueryPages as $page ) {
 	@list( $class, $special, $limit ) = $page;
@@ -28,11 +29,11 @@ foreach ( $wgQueryPages as $page ) {
 		continue;
 	}
 
-	if ( in_array( $special, $wgDisableQueryPageUpdate ) ) {
+	if ( !isset( $options['override'] ) && $wgDisableQueryPageUpdate && in_array( $special, $wgDisableQueryPageUpdate ) ) {
 		printf("%-30s disabled\n", $special);
 		continue;
 	}
-		
+
 	$specialObj = SpecialPage::getPage( $special );
 	if ( !$specialObj ) {
 		print "No such special page: $special\n";
@@ -86,7 +87,7 @@ foreach ( $wgQueryPages as $page ) {
 
 		# Wait for the slave to catch up
 		/*
-		$slaveDB =& wfGetDB( DB_SLAVE, array('QueryPage::recache', 'vslow' ) );
+		$slaveDB = wfGetDB( DB_SLAVE, array('QueryPage::recache', 'vslow' ) );
 		while( $slaveDB->getLag() > 600 ) {
 			print "Slave lagged, waiting...\n";
 			sleep(30);
@@ -101,4 +102,4 @@ foreach ( $wgQueryPages as $page ) {
 	}
 }
 
-?>
+

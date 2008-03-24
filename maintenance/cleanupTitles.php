@@ -25,8 +25,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  *
  * @author Brion Vibber <brion at pobox.com>
- * @package MediaWiki
- * @subpackage maintenance
+ * @addtogroup maintenance
  */
 
 require_once( 'commandLine.inc' );
@@ -38,8 +37,6 @@ class TitleCleanup extends TableCleanup {
 	}
 
 	function processPage( $row ) {
-		global $wgContLang;
-
 		$current = Title::makeTitle( $row->page_namespace, $row->page_title );
 		$display = $current->getPrefixedText();
 
@@ -82,12 +79,12 @@ class TitleCleanup extends TableCleanup {
 			$title = Title::newFromText( $clean );
 		}
 
-		$dest = $title->getDbKey();
+		$dest = $title->getDBkey();
 		if( $this->dryrun ) {
 			$this->log( "DRY RUN: would rename $row->page_id ($row->page_namespace,'$row->page_title') to ($row->page_namespace,'$dest')" );
 		} else {
 			$this->log( "renaming $row->page_id ($row->page_namespace,'$row->page_title') to ($row->page_namespace,'$dest')" );
-			$dbw =& wfGetDB( DB_MASTER );
+			$dbw = wfGetDB( DB_MASTER );
 			$dbw->update( 'page',
 				array( 'page_title' => $dest ),
 				array( 'page_id' => $row->page_id ),
@@ -100,7 +97,7 @@ class TitleCleanup extends TableCleanup {
 			if( $title->getInterwiki() ) {
 				$prior = $title->getPrefixedDbKey();
 			} else {
-				$prior = $title->getDbKey();
+				$prior = $title->getDBkey();
 			}
 			$clean = 'Broken/' . $prior;
 			$verified = Title::makeTitleSafe( $row->page_namespace, $clean );
@@ -115,12 +112,12 @@ class TitleCleanup extends TableCleanup {
 			wfDie( "Something awry; empty title.\n" );
 		}
 		$ns = $title->getNamespace();
-		$dest = $title->getDbKey();
+		$dest = $title->getDBkey();
 		if( $this->dryrun ) {
 			$this->log( "DRY RUN: would rename $row->page_id ($row->page_namespace,'$row->page_title') to ($row->page_namespace,'$dest')" );
 		} else {
 			$this->log( "renaming $row->page_id ($row->page_namespace,'$row->page_title') to ($ns,'$dest')" );
-			$dbw =& wfGetDB( DB_MASTER );
+			$dbw = wfGetDB( DB_MASTER );
 			$dbw->update( 'page',
 				array(
 					'page_namespace' => $ns,
@@ -138,4 +135,4 @@ $wgUser->setName( 'Conversion script' );
 $caps = new TitleCleanup( !isset( $options['fix'] ) );
 $caps->cleanup();
 
-?>
+

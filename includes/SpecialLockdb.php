@@ -1,8 +1,7 @@
 <?php
 /**
  *
- * @package MediaWiki
- * @subpackage SpecialPage
+ * @addtogroup SpecialPage
  */
 
 /**
@@ -37,9 +36,8 @@ function wfSpecialLockdb() {
 }
 
 /**
- *
- * @package MediaWiki
- * @subpackage SpecialPage
+ * A form to make the database readonly (eg for maintenance purposes).
+ * @addtogroup SpecialPage
  */
 class DBLockForm {
 	var $reason = '';
@@ -53,7 +51,7 @@ class DBLockForm {
 		global $wgOut, $wgUser;
 
 		$wgOut->setPagetitle( wfMsg( 'lockdb' ) );
-		$wgOut->addWikiText( wfMsg( 'lockdbtext' ) );
+		$wgOut->addWikiMsg( 'lockdbtext' );
 
 		if ( "" != $err ) {
 			$wgOut->setSubtitle( wfMsg( 'formerror' ) );
@@ -123,14 +121,14 @@ END
 
 		$wgOut->setPagetitle( wfMsg( 'lockdb' ) );
 		$wgOut->setSubtitle( wfMsg( 'lockdbsuccesssub' ) );
-		$wgOut->addWikiText( wfMsg( 'lockdbsuccesstext' ) );
+		$wgOut->addWikiMsg( 'lockdbsuccesstext' );
 	}
 	
-	function notWritable() {
+	public static function notWritable() {
 		global $wgOut;
 		$wgOut->errorPage( 'lockdb', 'lockfilenotwritable' );
 	}
 	
 }
 
-?>
+

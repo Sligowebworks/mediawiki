@@ -1,8 +1,7 @@
 <?php
 /**
  * Use this special page to get a list of the MediaWiki system messages.
- * @package MediaWiki
- * @subpackage SpecialPage
+ * @addtogroup SpecialPage
  */
 
 /**
@@ -14,7 +13,7 @@ function wfSpecialAllmessages() {
 
 	# The page isn't much use if the MediaWiki namespace is not being used
 	if( !$wgUseDatabaseMessages ) {
-		$wgOut->addWikiText( wfMsg( 'allmessagesnotsupportedDB' ) );
+		$wgOut->addWikiMsg( 'allmessagesnotsupportedDB' );
 		return;
 	}
 
@@ -26,7 +25,8 @@ function wfSpecialAllmessages() {
 	$navText = wfMsg( 'allmessagestext' );
 
 	# Make sure all extension messages are available
-	MessageCache::loadAllMessages();
+	
+	$wgMessageCache->loadAllMessages();
 
 	$sortedArray = array_merge( Language::getMessagesFor( 'en' ), $wgMessageCache->getExtensionMessagesFor( 'en' ) );
 	ksort( $sortedArray );
@@ -44,16 +44,35 @@ function wfSpecialAllmessages() {
 
 	wfProfileIn( __METHOD__ . '-output' );
 	if ( $ot == 'php' ) {
-		$navText .= makePhp( $messages );
-		$wgOut->addHTML( 'PHP | <a href="' . $wgTitle->escapeLocalUrl( 'ot=html' ) . '">HTML</a><pre>' . htmlspecialchars( $navText ) . '</pre>' );
+		$navText .= wfAllMessagesMakePhp( $messages );
+		$wgOut->addHTML( 'PHP | <a href="' . $wgTitle->escapeLocalUrl( 'ot=html' ) . '">HTML</a> | ' . 
+			'<a href="' . $wgTitle->escapeLocalUrl( 'ot=xml' ) . '">XML</a>' . 
+			'<pre>' . htmlspecialchars( $navText ) . '</pre>' );
+	} else if ( $ot == 'xml' ) {
+		$wgOut->disable();
+		header( 'Content-type: text/xml' );
+		echo wfAllMessagesMakeXml( $messages );
 	} else {
-		$wgOut->addHTML( '<a href="' . $wgTitle->escapeLocalUrl( 'ot=php' ) . '">PHP</a> | HTML' );
+		$wgOut->addHTML( '<a href="' . $wgTitle->escapeLocalUrl( 'ot=php' ) . '">PHP</a> | ' . 
+			'HTML |  <a href="' . $wgTitle->escapeLocalUrl( 'ot=xml' ) . '">XML</a>' );
 		$wgOut->addWikiText( $navText );
-		$wgOut->addHTML( makeHTMLText( $messages ) );
+		$wgOut->addHTML( wfAllMessagesMakeHTMLText( $messages ) );
 	}
 	wfProfileOut( __METHOD__ . '-output' );
 
 	wfProfileOut( __METHOD__ );
+}
+
+function wfAllMessagesMakeXml( $messages ) {
+	global $wgLang;
+	$lang = $wgLang->getCode();
+	$txt = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n";
+	$txt .= "<messages lang=\"$lang\">\n";
+	foreach( $messages as $key => $m ) {
+		$txt .= "\t" . Xml::element( 'message', array( 'name' => $key ), $m['msg'] ) . "\n";
+	}
+	$txt .= "</messages>";
+	return $txt;
 }
 
 /**
@@ -62,7 +81,7 @@ function wfSpecialAllmessages() {
  * @return The PHP messages array.
  * @todo Make suitable for language files.
  */
-function makePhp( $messages ) {
+function wfAllMessagesMakePhp( $messages ) {
 	global $wgLang;
 	$txt = "\n\n\$messages = array(\n";
 	foreach( $messages as $key => $m ) {
@@ -85,12 +104,12 @@ function makePhp( $messages ) {
  * @param $messages Messages array.
  * @return The HTML list of messages.
  */
-function makeHTMLText( $messages ) {
+function wfAllMessagesMakeHTMLText( $messages ) {
 	global $wgLang, $wgContLang, $wgUser;
 	wfProfileIn( __METHOD__ );
 
-	$sk =& $wgUser->getSkin();
-	$talk = $wgLang->getNsText( NS_TALK );
+	$sk = $wgUser->getSkin();
+	$talk = wfMsg( 'talkpagelinktext' );
 
 	$input = wfElement( 'input', array(
 		'type'    => 'text',
@@ -124,7 +143,7 @@ function makeHTMLText( $messages ) {
 		NS_MEDIAWIKI => array(),
 		NS_MEDIAWIKI_TALK => array()
 	);
-	$dbr =& wfGetDB( DB_SLAVE );
+	$dbr = wfGetDB( DB_SLAVE );
 	$page = $dbr->tableName( 'page' );
 	$sql = "SELECT page_namespace,page_title FROM $page WHERE page_namespace IN (" . NS_MEDIAWIKI . ", " . NS_MEDIAWIKI_TALK . ")";
 	$res = $dbr->query( $sql );
@@ -197,4 +216,4 @@ $mw
 	return $txt;
 }
 
-?>
+

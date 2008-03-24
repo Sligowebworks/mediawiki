@@ -3,15 +3,14 @@
    * Spyc -- A Simple PHP YAML Class
    * @version 0.2.3 -- 2006-02-04
    * @author Chris Wanstrath <chris@ozmm.org>
-   * @link http://spyc.sourceforge.net/
+   * @see http://spyc.sourceforge.net/
    * @copyright Copyright 2005-2006 Chris Wanstrath
    * @license http://www.opensource.org/licenses/mit-license.php MIT License
-   * @package Spyc
    */
 
   /** 
    * A node, used by Spyc for parsing YAML.
-   * @package Spyc
+   * @addtogroup API
    */
   class YAMLNode {
     /**#@+
@@ -20,7 +19,7 @@
      */ 
     var $parent;
     var $id;
-    /**#@+*/
+    /**#@-*/
     /** 
      * @access public
      * @var mixed
@@ -59,7 +58,7 @@
    *   $parser = new Spyc;
    *   $array  = $parser->load($file);
    * </code>
-   * @package Spyc
+   * @addtogroup API
    */
   class Spyc {
     
@@ -340,7 +339,7 @@
     var $_isInline;
     var $_dumpIndent;
     var $_dumpWordWrap;
-    /**#@+*/
+    /**#@-*/
 
     /**** Private Methods ****/
     
@@ -386,6 +385,18 @@
         return false;
       }
     }
+
+    /**
+     * Find out whether a string needs to be output as a literal rather than in plain style.
+     * Added by Roan Kattouw 13-03-2008
+     * @param $value The string to check
+     * @return bool
+     */
+    function _needLiteral($value) {
+      # Check whether the string contains # or : or begins with any of:
+      # [ - ? , [ ] { } ! * & | > ' " % @ ` ]
+      return (bool)(preg_match("/[#:]/", $value) || preg_match("/^[-?,[\]{}!*&|>'\"%@`]/", $value));
+    }
   
     /**
      * Returns YAML from a key and a value
@@ -397,7 +408,7 @@
      */ 
     function _dumpNode($key,$value,$indent) {
       // do some folding here, for blocks
-      if (strpos($value,"\n")) {
+      if (strpos($value,"\n") || $this->_needLiteral($value)) {
         $value = $this->_doLiteralBlock($value,$indent);
       } else {  
         $value  = $this->_doFolding($value,$indent);
@@ -858,4 +869,4 @@
       return $ret; 
     }
   }
-?>
+

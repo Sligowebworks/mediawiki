@@ -4,8 +4,7 @@ require_once 'counter.php';
  * Run all updaters.
  *
  * @todo document
- * @package MediaWiki
- * @subpackage Maintenance
+ * @addtogroup Maintenance
  */
 
 /** */
@@ -61,4 +60,4 @@ do_all_updates( $shared, $purge );
 
 print "Done.\n";
 
-?>
+

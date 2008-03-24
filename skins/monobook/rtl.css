@@ -44,6 +44,7 @@ html>body .portlet {
 .editsection {
 	float: left;
 	margin-right: 5px;
+	margin-left: 0; /* bug 9122: undo default LTR */
 }
 /* recover IEMac (might be fine with the float, but usually it's close to IE */
 *>body .portlet {
@@ -214,3 +215,24 @@ input#wpSave, input#wpDiff {
 	float: right;
 	margin: 0 0 1em 3em;
 }
+/* Unblock and Ipblocklist links of Special:Blockip */
+p.mw-ipb-conveniencelinks {
+	float: left;
+}
+
+.toggle {
+	margin-left: 0em;
+	margin-right: 2em;
+}
+table.filehistory th {
+	text-align: right;
+}
+
+/**
+ * Lists:
+ * The following lines don't have a visible effect on non-Gecko browsers
+ * They fix a problem ith Gecko browsers rendering lists to the right of
+ * left-floated objects in an RTL layout.
+ */
+html>body.rtl #bodyContent ul { display:table; }
+html>body.rtl #bodyContent ol { display:table; }

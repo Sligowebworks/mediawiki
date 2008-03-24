@@ -3,29 +3,24 @@
  * Rebuild interwiki table using the file on meta and the language list
  * Wikimedia specific!
  * @todo document
- * @package MediaWiki
- * @subpackage Maintenance
+ * @addtogroup Maintenance
  */
 
 /** */
 $oldCwd = getcwd();
 
-$optionsWithArgs = array( "o" );
+$optionsWithArgs = array( "d" );
 include_once( "commandLine.inc" );
 include_once( "rebuildInterwiki.inc" );
 chdir( $oldCwd );
 
-$sql = getRebuildInterwikiSQL();
-
 # Output
-if ( isset( $options['o'] ) ) {
-	# To file specified with -o
-	$file = fopen( $options['o'], "w" );
-	fwrite( $file, $sql );
-	fclose( $file );
+if ( isset( $options['d'] ) ) {
+	$destDir = $options['d'];
 } else {
-	# To stdout
-	print $sql;
+	$destDir = '/home/wikipedia/conf/interwiki/sql';
 }
 
-?>
+echo "Making new interwiki SQL files in $destDir\n";
+makeInterwikiSQL( $destDir );
+

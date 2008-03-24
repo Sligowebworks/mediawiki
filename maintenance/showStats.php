@@ -9,7 +9,7 @@
  * @author Brion Vibber
  * @author Rob Church <robchur@gmail.com>
  *
- * @licence GNU General Public License 2.0 or later
+ * @license GNU General Public License 2.0 or later
  */
 
 require_once( 'commandLine.inc' );
@@ -28,7 +28,7 @@ $fields = array(
 );
 
 // Get cached stats from slave database
-$dbr =& wfGetDB( DB_SLAVE );
+$dbr = wfGetDB( DB_SLAVE );
 $fname = 'showStats';
 $stats = $dbr->selectRow( 'site_stats', '*', '' );
 
@@ -43,4 +43,4 @@ foreach( $fields as $field => $desc ) {
 foreach( $fields as $field => $desc ) {
 	printf( "%-{$max_length_desc}s: %{$max_length_value}d\n", $desc, $stats->$field );
 }
-?>
+
